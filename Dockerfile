@@ -23,7 +23,7 @@ COPY --from=build /go/bin/$BUILD_NAME /usr/local/bin/$BUILD_NAME
 COPY entrypoint.sh /usr/local/bin/entrypoint.sh
 
 ENV \
-    PORT=8080 \
+    PORT=9222 \
     MAX_CHROMES_NUM=16
 
 HEALTHCHECK --interval=30s --timeout=30s --start-period=10s --retries=3 CMD /usr/bin/curl -sS http://127.0.0.1:$PORT/healthcheck/ || exit 1

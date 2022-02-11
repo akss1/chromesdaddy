@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"net/http"
 	"net/http/httputil"
 
@@ -10,9 +11,15 @@ import (
 // initHandleFunc serves the first request from a client,
 // starts a chrome instance on a random port from the pool between PortIntervalStart and PortIntervalEnd
 // and sends data to the client to create a connection with chrome
-func initHandleFunc(limiterChan chan bool) http.HandlerFunc {
+func initHandleFunc(limiterChan chan struct{}) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		<-limiterChan
+		defer func() {
+			limiterChan <- struct{}{}
+		}()
+
+		ctx, cancel := context.WithTimeout(r.Context(), chromeTimeout)
+		defer cancel()
 
 		opts := RunChromeOpts{
 			Port:           generateRandomPort(),
@@ -21,11 +28,9 @@ func initHandleFunc(limiterChan chan bool) http.HandlerFunc {
 			DownloadImages: r.URL.Query().Get("images"),
 		}
 
-		chrome, err := RunChrome(opts)
+		chrome, err := RunChrome(ctx, opts)
 		if err != nil {
 			log.Error().Err(err).Msg("fail to run chrome")
-			limiterChan <- true
-
 			return
 		}
 
@@ -45,7 +50,7 @@ func initHandleFunc(limiterChan chan bool) http.HandlerFunc {
 
 // connProxyHandleFunc establishes a client-browser connection and controls it.
 // Kills the chrome after the connection ends
-func connProxyHandleFunc(limiterChan chan bool) http.HandlerFunc {
+func connProxyHandleFunc(limiterChan chan struct{}) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		lock.RLock()
 		chrome := Connections[r.RequestURI]
@@ -71,7 +76,7 @@ func connProxyHandleFunc(limiterChan chan bool) http.HandlerFunc {
 
 		RemoveChromeConnection(chrome)
 
-		limiterChan <- true
+		limiterChan <- struct{}{}
 
 		logger.Debug().Msg("chrome killed")
 	}

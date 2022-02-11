@@ -29,15 +29,13 @@ type RunChromeOpts struct {
 }
 
 type Chrome struct {
-	ID     string
-	Port   int
-	Proxy  string
-	URLRaw string
-	URL    *url.URL
+	ID    string
+	Port  int
+	Proxy string
+	URL   *url.URL
 
-	CMD        *exec.Cmd
-	Ctx        context.Context
-	CancelFunc context.CancelFunc
+	CMD *exec.Cmd
+	Ctx context.Context
 }
 
 var lock = sync.RWMutex{}
@@ -49,10 +47,9 @@ var Connections = make(map[string]Chrome)
 var BusyPorts = make(map[int]bool)
 
 // RunChrome runs the chrome and returns Chrome
-func RunChrome(opts RunChromeOpts) (Chrome, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), chromeTimeout)
-
+func RunChrome(ctx context.Context, opts RunChromeOpts) (Chrome, error) {
 	app := "/headless-shell/headless-shell"
+
 	args := []string{
 		"--headless",
 		"--disable-infobars",
@@ -83,8 +80,6 @@ func RunChrome(opts RunChromeOpts) (Chrome, error) {
 	stdoutPipe, err := cmd.StdoutPipe()
 	if err != nil {
 		log.Error().Err(err).Msg("fail to get chrome stdout pipe")
-		cancel()
-
 		return Chrome{}, err
 	}
 
@@ -95,8 +90,6 @@ func RunChrome(opts RunChromeOpts) (Chrome, error) {
 
 	if err := cmd.Start(); err != nil {
 		log.Error().Err(err).Msg("fail to start chrome")
-		cancel()
-
 		return Chrome{}, err
 	}
 
@@ -111,8 +104,6 @@ func RunChrome(opts RunChromeOpts) (Chrome, error) {
 
 	if err := stdoutPipe.Close(); err != nil {
 		log.Error().Err(err).Msg("fail to close chrome stdout pipe")
-		cancel()
-
 		return Chrome{}, err
 	}
 
@@ -122,8 +113,6 @@ func RunChrome(opts RunChromeOpts) (Chrome, error) {
 		if err := cmd.Process.Kill(); err != nil {
 			log.Error().Err(err).Msg("fail to kill chrome")
 		}
-
-		cancel()
 
 		return Chrome{}, errors.New("fail to get chromeID")
 	}
@@ -138,20 +127,16 @@ func RunChrome(opts RunChromeOpts) (Chrome, error) {
 			log.Error().Err(err).Msg("fail to kill chrome")
 		}
 
-		cancel()
-
 		return Chrome{}, err
 	}
 
 	chrome := Chrome{
-		ID:         chromeID,
-		Port:       opts.Port,
-		Proxy:      opts.Proxy,
-		URLRaw:     urlRaw,
-		URL:        u,
-		CMD:        cmd,
-		Ctx:        ctx,
-		CancelFunc: cancel,
+		ID:    chromeID,
+		Port:  opts.Port,
+		Proxy: opts.Proxy,
+		URL:   u,
+		CMD:   cmd,
+		Ctx:   ctx,
 	}
 
 	return chrome, nil
@@ -166,8 +151,6 @@ func KillChrome(chrome Chrome) error {
 	if _, err := chrome.CMD.Process.Wait(); err != nil {
 		return err
 	}
-
-	chrome.CancelFunc()
 
 	return nil
 }
@@ -216,7 +199,7 @@ func RemoveChromeConnection(chrome Chrome) {
 
 // CheckExpiredChromes periodically checks running chromes, and removes from the list if it finds a killed chrome
 // In case, for some reason, the balancer launched the chrome, but the client does not use it
-func CheckExpiredChromes(limiter chan<- bool) {
+func CheckExpiredChromes(limiter chan<- struct{}) {
 	for {
 		for _, chrome := range Connections {
 			if chrome.Ctx.Err() != nil {
@@ -231,7 +214,7 @@ func CheckExpiredChromes(limiter chan<- bool) {
 				}
 
 				RemoveChromeConnection(chrome)
-				limiter <- true
+				limiter <- struct{}{}
 
 				log.Warn().
 					Str("chromeID", chrome.ID).

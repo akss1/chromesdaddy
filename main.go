@@ -32,10 +32,10 @@ func main() {
 	signal.Notify(done, os.Interrupt, syscall.SIGINT, syscall.SIGTERM)
 
 	// for limit the number of running chrome instances
-	limiterChan := make(chan bool, maxChromes)
+	limiterChan := make(chan struct{}, maxChromes)
 
 	for i := 0; i < maxChromes; i++ {
-		limiterChan <- true
+		limiterChan <- struct{}{}
 	}
 
 	go CheckExpiredChromes(limiterChan)
@@ -59,9 +59,9 @@ func main() {
 
 	<-done
 
-	log.Debug().Str("addr", srv.Addr).Msg("server stopped")
-
 	if err := srv.Shutdown(context.Background()); err != nil {
 		log.Fatal().Err(err).Send()
 	}
+
+	log.Debug().Str("addr", srv.Addr).Msg("server stopped")
 }
