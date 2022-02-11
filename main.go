@@ -38,7 +38,9 @@ func main() {
 		limiterChan <- struct{}{}
 	}
 
-	go CheckExpiredChromes(limiterChan)
+	ClientsStore = NewClientsStore()
+
+	go ClientsStore.CheckExpiredChromes(limiterChan)
 
 	router := chi.NewRouter()
 	router.Handle("/json/version", initHandleFunc(limiterChan))

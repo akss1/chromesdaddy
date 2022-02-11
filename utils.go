@@ -38,17 +38,3 @@ func extractChromeID(chromeStdOutStr string) (string, error) {
 
 	return chromeStdOutStr, nil
 }
-
-func generateRandomPort() int {
-	p := 0
-
-	for {
-		p = RandInt(PortIntervalStart, PortIntervalEnd)
-
-		if !BusyPorts[p] {
-			break
-		}
-	}
-
-	return p
-}

@@ -22,7 +22,7 @@ func initHandleFunc(limiterChan chan struct{}) http.HandlerFunc {
 		defer cancel()
 
 		opts := RunChromeOpts{
-			Port:           generateRandomPort(),
+			Port:           ClientsStore.genIdlePort(),
 			Proxy:          r.URL.Query().Get("proxy"),
 			UserAgent:      r.URL.Query().Get("ua"),
 			DownloadImages: r.URL.Query().Get("images"),
@@ -34,7 +34,7 @@ func initHandleFunc(limiterChan chan struct{}) http.HandlerFunc {
 			return
 		}
 
-		StoreChromeConnection(chrome)
+		ClientsStore.Put(chrome)
 
 		proxyServer := httputil.NewSingleHostReverseProxy(chrome.URL)
 
@@ -52,9 +52,7 @@ func initHandleFunc(limiterChan chan struct{}) http.HandlerFunc {
 // Kills the chrome after the connection ends
 func connProxyHandleFunc(limiterChan chan struct{}) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		lock.RLock()
-		chrome := Connections[r.RequestURI]
-		lock.RUnlock()
+		chrome := ClientsStore.Get(r.RequestURI)
 
 		logger := log.With().
 			Str("chromeID", chrome.ID).
@@ -74,7 +72,7 @@ func connProxyHandleFunc(limiterChan chan struct{}) http.HandlerFunc {
 			return
 		}
 
-		RemoveChromeConnection(chrome)
+		ClientsStore.Del(chrome)
 
 		limiterChan <- struct{}{}
 

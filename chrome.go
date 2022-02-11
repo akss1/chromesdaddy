@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"net/url"
 	"os/exec"
-	"sync"
 	"time"
 
 	"github.com/rs/zerolog/log"
@@ -38,13 +37,7 @@ type Chrome struct {
 	Ctx context.Context
 }
 
-var lock = sync.RWMutex{}
-
-// Connections contains client connections as map of chromeID to Chrome
-var Connections = make(map[string]Chrome)
-
-// BusyPorts contains busy ports on which chromes are running
-var BusyPorts = make(map[int]bool)
+var ClientsStore Clients
 
 // RunChrome runs the chrome and returns Chrome
 func RunChrome(ctx context.Context, opts RunChromeOpts) (Chrome, error) {
@@ -177,53 +170,5 @@ func GetChromeIDFromStdout(reader *bufio.Reader) string {
 
 			return id
 		}
-	}
-}
-
-func StoreChromeConnection(chrome Chrome) {
-	lock.Lock()
-	defer lock.Unlock()
-
-	Connections[chrome.ID] = chrome
-	BusyPorts[chrome.Port] = true
-}
-
-func RemoveChromeConnection(chrome Chrome) {
-	lock.Lock()
-	defer lock.Unlock()
-
-	delete(Connections, chrome.ID)
-
-	BusyPorts[chrome.Port] = false
-}
-
-// CheckExpiredChromes periodically checks running chromes, and removes from the list if it finds a killed chrome
-// In case, for some reason, the balancer launched the chrome, but the client does not use it
-func CheckExpiredChromes(limiter chan<- struct{}) {
-	for {
-		for _, chrome := range Connections {
-			if chrome.Ctx.Err() != nil {
-				log.Warn().
-					Str("chromeID", chrome.ID).
-					Int("port", chrome.Port).
-					Str("proxy", chrome.Proxy).
-					Msg("detected killed chrome")
-
-				if err := KillChrome(chrome); err != nil {
-					log.Error().Err(err).Msg("fail to kill chrome in check ctxs routine")
-				}
-
-				RemoveChromeConnection(chrome)
-				limiter <- struct{}{}
-
-				log.Warn().
-					Str("chromeID", chrome.ID).
-					Int("port", chrome.Port).
-					Str("proxy", chrome.Proxy).
-					Msg("killed chrome successfully deleted")
-			}
-		}
-
-		time.Sleep(10 * time.Second)
 	}
 }
