@@ -1,7 +1,5 @@
 #!/usr/bin/env sh
 
-cron
-
 /usr/local/bin/chromebalancer &
 child=$!
 

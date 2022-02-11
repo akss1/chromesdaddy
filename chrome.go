@@ -18,7 +18,7 @@ const (
 	PortIntervalEnd   = 7628
 )
 
-const chromeBaseURL = "http://localhost"
+const chromeBaseURL = "http://127.0.0.1"
 const chromeTimeout = 5 * time.Minute
 
 type RunChromeOpts struct {
@@ -28,7 +28,7 @@ type RunChromeOpts struct {
 	UserAgent      string
 }
 
-type ChromeInstance struct {
+type Chrome struct {
 	ID     string
 	Port   int
 	Proxy  string
@@ -42,14 +42,14 @@ type ChromeInstance struct {
 
 var lock = sync.RWMutex{}
 
-// Connections contains client connections as map of chromeID to ChromeInstance
-var Connections = make(map[string]ChromeInstance)
+// Connections contains client connections as map of chromeID to Chrome
+var Connections = make(map[string]Chrome)
 
 // BusyPorts contains busy ports on which chromes are running
 var BusyPorts = make(map[int]bool)
 
-// RunChrome runs the chrome and returns ChromeInstance
-func RunChrome(opts RunChromeOpts) (ChromeInstance, error) {
+// RunChrome runs the chrome and returns Chrome
+func RunChrome(opts RunChromeOpts) (Chrome, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), chromeTimeout)
 
 	app := "/headless-shell/headless-shell"
@@ -85,7 +85,7 @@ func RunChrome(opts RunChromeOpts) (ChromeInstance, error) {
 		log.Error().Err(err).Msg("fail to get chrome stdout pipe")
 		cancel()
 
-		return ChromeInstance{}, err
+		return Chrome{}, err
 	}
 
 	// this is necessary for the read operation from stdoutPipe to be non-blocking
@@ -97,7 +97,7 @@ func RunChrome(opts RunChromeOpts) (ChromeInstance, error) {
 		log.Error().Err(err).Msg("fail to start chrome")
 		cancel()
 
-		return ChromeInstance{}, err
+		return Chrome{}, err
 	}
 
 	chromeID := GetChromeIDFromStdout(reader)
@@ -113,7 +113,7 @@ func RunChrome(opts RunChromeOpts) (ChromeInstance, error) {
 		log.Error().Err(err).Msg("fail to close chrome stdout pipe")
 		cancel()
 
-		return ChromeInstance{}, err
+		return Chrome{}, err
 	}
 
 	if chromeID == "" {
@@ -125,7 +125,7 @@ func RunChrome(opts RunChromeOpts) (ChromeInstance, error) {
 
 		cancel()
 
-		return ChromeInstance{}, errors.New("fail to get chromeID")
+		return Chrome{}, errors.New("fail to get chromeID")
 	}
 
 	urlRaw := fmt.Sprintf("%s:%d", chromeBaseURL, opts.Port)
@@ -140,10 +140,10 @@ func RunChrome(opts RunChromeOpts) (ChromeInstance, error) {
 
 		cancel()
 
-		return ChromeInstance{}, err
+		return Chrome{}, err
 	}
 
-	chrome := ChromeInstance{
+	chrome := Chrome{
 		ID:         chromeID,
 		Port:       opts.Port,
 		Proxy:      opts.Proxy,
@@ -158,7 +158,7 @@ func RunChrome(opts RunChromeOpts) (ChromeInstance, error) {
 }
 
 // KillChrome kills the unnecessary browser instance
-func KillChrome(chrome ChromeInstance) error {
+func KillChrome(chrome Chrome) error {
 	if err := chrome.CMD.Process.Kill(); err != nil {
 		return err
 	}
@@ -197,7 +197,7 @@ func GetChromeIDFromStdout(reader *bufio.Reader) string {
 	}
 }
 
-func StoreChromeConnection(chrome ChromeInstance) {
+func StoreChromeConnection(chrome Chrome) {
 	lock.Lock()
 	defer lock.Unlock()
 
@@ -205,7 +205,7 @@ func StoreChromeConnection(chrome ChromeInstance) {
 	BusyPorts[chrome.Port] = true
 }
 
-func RemoveChromeConnection(chrome ChromeInstance) {
+func RemoveChromeConnection(chrome Chrome) {
 	lock.Lock()
 	defer lock.Unlock()
 
@@ -214,9 +214,9 @@ func RemoveChromeConnection(chrome ChromeInstance) {
 	BusyPorts[chrome.Port] = false
 }
 
-// CheckCtxDeadChromes periodically checks running chromes, and removes from the list if it finds a killed chrome
+// CheckExpiredChromes periodically checks running chromes, and removes from the list if it finds a killed chrome
 // In case, for some reason, the balancer launched the chrome, but the client does not use it
-func CheckCtxDeadChromes(limiter chan<- bool) {
+func CheckExpiredChromes(limiter chan<- bool) {
 	for {
 		for _, chrome := range Connections {
 			if chrome.Ctx.Err() != nil {

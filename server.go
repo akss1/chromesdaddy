@@ -1,20 +1,16 @@
 package main
 
 import (
-	"math/rand"
 	"net/http"
 	"net/http/httputil"
-	"time"
 
 	"github.com/rs/zerolog/log"
 )
 
-// initReqHandleFunc serves the first request from a client,
+// initHandleFunc serves the first request from a client,
 // starts a chrome instance on a random port from the pool between PortIntervalStart and PortIntervalEnd
 // and sends data to the client to create a connection with chrome
-func initReqHandleFunc(limiterChan chan bool) http.HandlerFunc {
-	rand.Seed(time.Now().UnixNano())
-
+func initHandleFunc(limiterChan chan bool) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		<-limiterChan
 

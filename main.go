@@ -3,11 +3,13 @@ package main
 import (
 	"context"
 	"fmt"
+	"math/rand"
 	"net/http"
 	"os"
 	"os/signal"
 	"strconv"
 	"syscall"
+	"time"
 
 	"github.com/go-chi/chi"
 	"github.com/rs/zerolog/log"
@@ -24,6 +26,8 @@ func main() {
 		log.Fatal().Err(err).Msg("fail to parse max chromes num")
 	}
 
+	rand.Seed(time.Now().UnixNano())
+
 	done := make(chan os.Signal, 1)
 	signal.Notify(done, os.Interrupt, syscall.SIGINT, syscall.SIGTERM)
 
@@ -34,10 +38,10 @@ func main() {
 		limiterChan <- true
 	}
 
-	go CheckCtxDeadChromes(limiterChan)
+	go CheckExpiredChromes(limiterChan)
 
 	router := chi.NewRouter()
-	router.Handle("/json/version", initReqHandleFunc(limiterChan))
+	router.Handle("/json/version", initHandleFunc(limiterChan))
 	router.Handle("/devtools/browser/*", connProxyHandleFunc(limiterChan))
 
 	srv := &http.Server{
