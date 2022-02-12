@@ -13,7 +13,7 @@ import (
 )
 
 const DefaultBaseURL = "http://127.0.0.1"
-const DefaultTimeout = 5 * time.Minute
+const DefaultTTL = 5 * time.Minute
 
 type Opts struct {
 	Port           int
@@ -28,12 +28,15 @@ type Chrome struct {
 	Proxy string
 	URL   *url.URL
 
-	CMD *exec.Cmd
-	Ctx context.Context
+	CMD        *exec.Cmd
+	Ctx        context.Context
+	CancelFunc context.CancelFunc
 }
 
 // Run runs the chrome and returns Chrome
-func Run(ctx context.Context, opts Opts) (Chrome, error) {
+func Run(opts Opts) (Chrome, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), DefaultTTL)
+
 	app := "/headless-shell/headless-shell"
 
 	args := []string{
@@ -66,6 +69,8 @@ func Run(ctx context.Context, opts Opts) (Chrome, error) {
 	stdoutPipe, err := cmd.StdoutPipe()
 	if err != nil {
 		log.Error().Err(err).Msg("fail to get chrome stdout pipe")
+		cancel()
+
 		return Chrome{}, err
 	}
 
@@ -76,6 +81,8 @@ func Run(ctx context.Context, opts Opts) (Chrome, error) {
 
 	if err := cmd.Start(); err != nil {
 		log.Error().Err(err).Msg("fail to start chrome")
+		cancel()
+
 		return Chrome{}, err
 	}
 
@@ -90,6 +97,8 @@ func Run(ctx context.Context, opts Opts) (Chrome, error) {
 
 	if err := stdoutPipe.Close(); err != nil {
 		log.Error().Err(err).Msg("fail to close chrome stdout pipe")
+		cancel()
+
 		return Chrome{}, err
 	}
 
@@ -99,6 +108,8 @@ func Run(ctx context.Context, opts Opts) (Chrome, error) {
 		if err := cmd.Process.Kill(); err != nil {
 			log.Error().Err(err).Msg("fail to kill chrome")
 		}
+
+		cancel()
 
 		return Chrome{}, errors.New("fail to get chromeID")
 	}
@@ -111,16 +122,19 @@ func Run(ctx context.Context, opts Opts) (Chrome, error) {
 			log.Error().Err(err).Msg("fail to kill chrome")
 		}
 
+		cancel()
+
 		return Chrome{}, err
 	}
 
 	chrome := Chrome{
-		ID:    chromeID,
-		Port:  opts.Port,
-		Proxy: opts.Proxy,
-		URL:   u,
-		CMD:   cmd,
-		Ctx:   ctx,
+		ID:         chromeID,
+		Port:       opts.Port,
+		Proxy:      opts.Proxy,
+		URL:        u,
+		CMD:        cmd,
+		Ctx:        ctx,
+		CancelFunc: cancel,
 	}
 
 	return chrome, nil
@@ -135,6 +149,8 @@ func Kill(chrome Chrome) error {
 	if _, err := chrome.CMD.Process.Wait(); err != nil {
 		return err
 	}
+
+	chrome.CancelFunc()
 
 	return nil
 }

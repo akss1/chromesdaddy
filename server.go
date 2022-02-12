@@ -2,7 +2,6 @@ package main
 
 import (
 	"chromebalancer/chrome"
-	"context"
 	"net/http"
 	"net/http/httputil"
 
@@ -15,12 +14,6 @@ import (
 func initHandleFunc(limiterChan chan struct{}) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		<-limiterChan
-		defer func() {
-			limiterChan <- struct{}{}
-		}()
-
-		ctx, cancel := context.WithTimeout(r.Context(), chrome.DefaultTimeout)
-		defer cancel()
 
 		opts := chrome.Opts{
 			Port:           ClientsStore.GenIdlePort(),
@@ -29,9 +22,11 @@ func initHandleFunc(limiterChan chan struct{}) http.HandlerFunc {
 			DownloadImages: r.URL.Query().Get("images"),
 		}
 
-		c, err := chrome.Run(ctx, opts)
+		c, err := chrome.Run(opts)
 		if err != nil {
 			log.Error().Err(err).Msg("fail to run chrome")
+			limiterChan <- struct{}{}
+
 			return
 		}
 
