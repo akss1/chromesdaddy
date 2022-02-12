@@ -17,7 +17,7 @@ import (
 	"github.com/rs/zerolog/log"
 )
 
-// TODO UserFriendly API
+// TODO Modify API for more user-friendly
 // TODO Add Swagger
 
 var ClientsStore clientsstore.ClientsStore

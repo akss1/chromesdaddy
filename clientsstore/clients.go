@@ -63,7 +63,7 @@ func (cs *ClientsStore) CheckExpiredChromes(limiter chan<- struct{}) {
 					Str("chromeID", c.ID).
 					Int("port", c.Port).
 					Str("proxy", c.Proxy).
-					Msg("detect killed chrome")
+					Msg("detect expired chrome")
 
 				if err := chrome.Kill(c); err != nil {
 					log.Error().Err(err).Msg("fail to kill expired chrome")
