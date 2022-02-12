@@ -17,7 +17,10 @@ import (
 	"github.com/rs/zerolog/log"
 )
 
-var ClientsStore clientsstore.ChromesStore
+// TODO UserFriendly API
+// TODO Add Swagger
+
+var ClientsStore clientsstore.ClientsStore
 
 func main() {
 	port, err := strconv.Atoi(utils.GetEnv("PORT", "9222"))

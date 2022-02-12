@@ -2,7 +2,7 @@ package clientsstore
 
 import "chromebalancer/utils"
 
-func (cs *ChromesStore) GenIdlePort() int {
+func (cs *ClientsStore) GenIdlePort() int {
 	p := 0
 
 	for {

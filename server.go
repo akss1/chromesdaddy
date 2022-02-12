@@ -9,8 +9,6 @@ import (
 	"github.com/rs/zerolog/log"
 )
 
-// TODO Swagger
-
 // initHandleFunc serves the first request from a client,
 // starts a chrome instance on a random port from the pool between PortIntervalStart and PortIntervalEnd
 // and sends data to the client to create a connection with chrome
