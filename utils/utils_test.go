@@ -15,7 +15,7 @@ func TestRandInt(t *testing.T) {
 	max := 20
 
 	for i := 0; i < 50; i++ {
-		r := RandInt(1, 3)
+		r := RandInt(min, max)
 
 		assert.GreaterOrEqual(t, r, min)
 		assert.LessOrEqual(t, r, max)
