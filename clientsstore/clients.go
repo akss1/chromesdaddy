@@ -1,7 +1,7 @@
 package clientsstore
 
 import (
-	"chromebalancer/chrome"
+	"chromesdaddy/chrome"
 	"sync"
 	"time"
 

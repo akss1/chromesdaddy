@@ -1,7 +1,7 @@
 package main
 
 import (
-	"chromebalancer/chrome"
+	"chromesdaddy/chrome"
 	"net/http"
 	"net/http/httputil"
 

@@ -1,8 +1,8 @@
 package main
 
 import (
-	"chromebalancer/clientsstore"
-	"chromebalancer/utils"
+	"chromesdaddy/clientsstore"
+	"chromesdaddy/utils"
 	"context"
 	"fmt"
 	"math/rand"

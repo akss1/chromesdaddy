@@ -1,6 +1,6 @@
 package clientsstore
 
-import "chromebalancer/utils"
+import "chromesdaddy/utils"
 
 func (cs *ClientsStore) GenIdlePort() int {
 	p := 0
