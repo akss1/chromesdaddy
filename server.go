@@ -9,6 +9,8 @@ import (
 	"github.com/rs/zerolog/log"
 )
 
+// TODO Swagger
+
 // initHandleFunc serves the first request from a client,
 // starts a chrome instance on a random port from the pool between PortIntervalStart and PortIntervalEnd
 // and sends data to the client to create a connection with chrome
@@ -22,7 +24,7 @@ func initHandleFunc(limiterChan chan struct{}) http.HandlerFunc {
 		ctx, cancel := context.WithTimeout(r.Context(), chrome.DefaultTimeout)
 		defer cancel()
 
-		opts := chrome.RunChromeOpts{
+		opts := chrome.Opts{
 			Port:           ClientsStore.GenIdlePort(),
 			Proxy:          r.URL.Query().Get("proxy"),
 			UserAgent:      r.URL.Query().Get("ua"),

@@ -15,7 +15,7 @@ import (
 const DefaultBaseURL = "http://127.0.0.1"
 const DefaultTimeout = 5 * time.Minute
 
-type RunChromeOpts struct {
+type Opts struct {
 	Port           int
 	Proxy          string
 	DownloadImages string
@@ -33,7 +33,7 @@ type Chrome struct {
 }
 
 // Run runs the chrome and returns Chrome
-func Run(ctx context.Context, opts RunChromeOpts) (Chrome, error) {
+func Run(ctx context.Context, opts Opts) (Chrome, error) {
 	app := "/headless-shell/headless-shell"
 
 	args := []string{
