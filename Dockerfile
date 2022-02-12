@@ -4,12 +4,13 @@ ARG BUILD_NAME=chromebalancer
 
 WORKDIR /go/$BUILD_NAME
 
-COPY main.go .
-COPY server.go .
-COPY chrome.go .
-COPY utils.go .
+COPY chrome/ chrome/
+COPY clientsstore/ clientsstore/
+COPY utils/ utils/
 COPY go.mod .
 COPY go.sum .
+COPY main.go .
+COPY server.go .
 
 ENV CGO_ENABLED=0
 

@@ -1,6 +1,7 @@
 package main
 
 import (
+	"chromebalancer/chrome"
 	"context"
 	"net/http"
 	"net/http/httputil"
@@ -18,32 +19,32 @@ func initHandleFunc(limiterChan chan struct{}) http.HandlerFunc {
 			limiterChan <- struct{}{}
 		}()
 
-		ctx, cancel := context.WithTimeout(r.Context(), chromeTimeout)
+		ctx, cancel := context.WithTimeout(r.Context(), chrome.DefaultTimeout)
 		defer cancel()
 
-		opts := RunChromeOpts{
-			Port:           ClientsStore.genIdlePort(),
+		opts := chrome.RunChromeOpts{
+			Port:           ClientsStore.GenIdlePort(),
 			Proxy:          r.URL.Query().Get("proxy"),
 			UserAgent:      r.URL.Query().Get("ua"),
 			DownloadImages: r.URL.Query().Get("images"),
 		}
 
-		chrome, err := RunChrome(ctx, opts)
+		c, err := chrome.Run(ctx, opts)
 		if err != nil {
 			log.Error().Err(err).Msg("fail to run chrome")
 			return
 		}
 
-		ClientsStore.Put(chrome)
+		ClientsStore.Put(c)
 
-		proxyServer := httputil.NewSingleHostReverseProxy(chrome.URL)
+		proxyServer := httputil.NewSingleHostReverseProxy(c.URL)
 
 		proxyServer.ServeHTTP(w, r)
 
 		log.Debug().
-			Str("chromeID", chrome.ID).
-			Int("port", chrome.Port).
-			Str("proxy", chrome.Proxy).
+			Str("chromeID", c.ID).
+			Int("port", c.Port).
+			Str("proxy", c.Proxy).
 			Msg("chrome started")
 	}
 }
@@ -52,14 +53,14 @@ func initHandleFunc(limiterChan chan struct{}) http.HandlerFunc {
 // Kills the chrome after the connection ends
 func connProxyHandleFunc(limiterChan chan struct{}) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		chrome := ClientsStore.Get(r.RequestURI)
+		c := ClientsStore.Get(r.RequestURI)
 
 		logger := log.With().
-			Str("chromeID", chrome.ID).
-			Int("port", chrome.Port).
-			Str("proxy", chrome.Proxy).Logger()
+			Str("chromeID", c.ID).
+			Int("port", c.Port).
+			Str("proxy", c.Proxy).Logger()
 
-		proxyServer := httputil.NewSingleHostReverseProxy(chrome.URL)
+		proxyServer := httputil.NewSingleHostReverseProxy(c.URL)
 
 		logger.Debug().Msg("client connected")
 
@@ -67,12 +68,12 @@ func connProxyHandleFunc(limiterChan chan struct{}) http.HandlerFunc {
 
 		logger.Debug().Msg("client disconnected")
 
-		if err := KillChrome(chrome); err != nil {
+		if err := chrome.Kill(c); err != nil {
 			logger.Error().Err(err).Msg("fail to kill chrome")
 			return
 		}
 
-		ClientsStore.Del(chrome)
+		ClientsStore.Del(c)
 
 		limiterChan <- struct{}{}
 

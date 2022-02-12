@@ -1,6 +1,8 @@
 package main
 
 import (
+	"chromebalancer/clientsstore"
+	"chromebalancer/utils"
 	"context"
 	"fmt"
 	"math/rand"
@@ -15,13 +17,15 @@ import (
 	"github.com/rs/zerolog/log"
 )
 
+var ClientsStore clientsstore.ChromesStore
+
 func main() {
-	port, err := strconv.Atoi(getEnv("PORT", "9222"))
+	port, err := strconv.Atoi(utils.GetEnv("PORT", "9222"))
 	if err != nil {
 		log.Fatal().Err(err).Msg("fail to parse port")
 	}
 
-	maxChromes, err := strconv.Atoi(getEnv("MAX_CHROMES_NUM", "16"))
+	maxChromes, err := strconv.Atoi(utils.GetEnv("MAX_CHROMES_NUM", "16"))
 	if err != nil {
 		log.Fatal().Err(err).Msg("fail to parse max chromes num")
 	}
@@ -38,7 +42,7 @@ func main() {
 		limiterChan <- struct{}{}
 	}
 
-	ClientsStore = NewClientsStore()
+	ClientsStore = clientsstore.NewStore()
 
 	go ClientsStore.CheckExpiredChromes(limiterChan)
 

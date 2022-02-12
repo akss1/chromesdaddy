@@ -1,4 +1,4 @@
-module github.com/akss1/chromebalancer
+module chromebalancer
 
 go 1.17
 

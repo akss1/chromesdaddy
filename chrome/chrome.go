@@ -1,4 +1,4 @@
-package main
+package chrome
 
 import (
 	"bufio"
@@ -12,13 +12,8 @@ import (
 	"github.com/rs/zerolog/log"
 )
 
-const (
-	PortIntervalStart = 7500
-	PortIntervalEnd   = 7628
-)
-
-const chromeBaseURL = "http://127.0.0.1"
-const chromeTimeout = 5 * time.Minute
+const DefaultBaseURL = "http://127.0.0.1"
+const DefaultTimeout = 5 * time.Minute
 
 type RunChromeOpts struct {
 	Port           int
@@ -37,10 +32,8 @@ type Chrome struct {
 	Ctx context.Context
 }
 
-var ClientsStore Clients
-
-// RunChrome runs the chrome and returns Chrome
-func RunChrome(ctx context.Context, opts RunChromeOpts) (Chrome, error) {
+// Run runs the chrome and returns Chrome
+func Run(ctx context.Context, opts RunChromeOpts) (Chrome, error) {
 	app := "/headless-shell/headless-shell"
 
 	args := []string{
@@ -110,9 +103,7 @@ func RunChrome(ctx context.Context, opts RunChromeOpts) (Chrome, error) {
 		return Chrome{}, errors.New("fail to get chromeID")
 	}
 
-	urlRaw := fmt.Sprintf("%s:%d", chromeBaseURL, opts.Port)
-
-	u, err := url.Parse(urlRaw)
+	u, err := url.Parse(fmt.Sprintf("%s:%d", DefaultBaseURL, opts.Port))
 	if err != nil {
 		log.Error().Err(err).Msg("fail to parse chrome url")
 
@@ -135,8 +126,8 @@ func RunChrome(ctx context.Context, opts RunChromeOpts) (Chrome, error) {
 	return chrome, nil
 }
 
-// KillChrome kills the unnecessary browser instance
-func KillChrome(chrome Chrome) error {
+// Kill kills the unnecessary browser instance
+func Kill(chrome Chrome) error {
 	if err := chrome.CMD.Process.Kill(); err != nil {
 		return err
 	}
@@ -146,29 +137,4 @@ func KillChrome(chrome Chrome) error {
 	}
 
 	return nil
-}
-
-func GetChromeIDFromStdout(reader *bufio.Reader) string {
-	ticker := time.NewTicker(1 * time.Minute)
-
-	for {
-		select {
-		case <-ticker.C:
-			log.Error().Msg("time out for read chrome's stdout")
-			return ""
-		default:
-			str, err := reader.ReadString('\n')
-			if err != nil {
-				log.Error().Err(err).Msg("fail to read chrome's stdout")
-				continue
-			}
-
-			id, err := extractChromeID(str)
-			if err != nil {
-				continue
-			}
-
-			return id
-		}
-	}
 }
